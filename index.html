@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joebi - Sistem Monitoring Stok Barang</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .tab-active {
+            border-bottom: 2px solid #0284c7;
+            color: #0284c7;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="h-full font-sans antialiased text-slate-800 bg-slate-50">
+
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <!-- Login Screen Overlay -->
+    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+        <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-md w-full p-8 transition-all">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center bg-brand-600 text-white w-16 h-16 rounded-2xl shadow-lg shadow-brand-500/30 mb-3">
+                    <i class="fa-solid fa-boxes-stacked text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold bg-gradient-to-r from-brand-700 to-indigo-600 bg-clip-text text-transparent">Joebi Inventory</h2>
+                <p class="text-xs text-slate-500 mt-1">Sistem Monitoring Stok Skincare & Kosmetik</p>
+            </div>
+
+            <!-- Login Error Alert -->
+            <div id="loginError" class="hidden mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <i class="fa-solid fa-circle-exclamation text-rose-500 text-sm"></i>
+                <span id="loginErrorText">Username atau password salah!</span>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Username</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="loginUsername" required placeholder="Masukkan username" class="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="password" id="loginPassword" required placeholder="Masukkan password" class="w-full pl-9 pr-3 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between text-xs pt-1">
+                    <label class="flex items-center text-slate-600 cursor-pointer">
+                        <input type="checkbox" id="rememberMe" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 mr-2">
+                        <span>Ingat saya</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs rounded-xl shadow-md shadow-brand-500/20 transition-all flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    <span>Masuk ke Sistem</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application Container (Hidden by default until logged in) -->
+    <div id="app" class="min-h-screen flex flex-col hidden">
+        <!-- Header / Navigation Bar -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <!-- Brand & Logo -->
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-brand-600 text-white p-2.5 rounded-xl shadow-md shadow-brand-500/20 flex items-center justify-center">
+                            <i class="fa-solid fa-boxes-stacked text-xl"></i>
+                        </div>
+                        <div>
+                            <span class="text-xl font-bold bg-gradient-to-r from-brand-700 to-indigo-600 bg-clip-text text-transparent">Joebi</span>
+                            <span class="hidden sm:inline-block text-xs text-slate-400 font-medium ml-2 px-2 py-0.5 bg-slate-100 rounded-full border border-slate-200">v2.4 Pro</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-3 sm:space-x-4">
+                        <!-- Alert Dropdown Quick Trigger -->
+                        <div class="relative" id="notificationMenuWrapper">
+                            <button id="btnNotifications" onclick="toggleNotificationDropdown()" class="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none">
+                                <i class="fa-regular fa-bell text-lg"></i>
+                                <span id="notifBadge" class="hidden absolute top-1 right-1 flex h-2.5 w-2.5">
+                                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                                </span>
+                            </button>
+                            <!-- Dropdown Box -->
+                            <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-2">
+                                <div class="px-4 py-2 border-b border-slate-100 flex justify-between items-center">
+                                    <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pemberitahuan Stok</h4>
+                                    <span id="notifCountText" class="text-xs text-brand-600 font-medium">0 Peringatan</span>
+                                </div>
+                                <div id="notifList" class="max-h-64 overflow-y-auto divide-y divide-slate-50 text-sm">
+                                    <!-- Dynamic Notification Items -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Realtime Clock -->
+                        <div class="hidden md:flex flex-col text-right border-l border-slate-200 pl-4">
+                            <span id="currentTime" class="text-xs font-semibold text-slate-700">00:00:00</span>
+                            <span id="currentDate" class="text-[10px] text-slate-400">1 Jan 2026</span>
+                        </div>
+
+                        <!-- User Profile & Logout -->
+                        <div class="flex items-center space-x-3 pl-2 border-l border-slate-200">
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-500 text-white flex items-center justify-center font-bold text-sm shadow">
+                                AD
+                            </div>
+                            <div class="hidden lg:block text-left">
+                                <p class="text-xs font-semibold text-slate-800 leading-none">Admin Gudang</p>
+                                <p class="text-[10px] text-slate-400">Gudang Utama - Jakarta</p>
+                            </div>
+                            <button onclick="handleLogout()" title="Keluar / Logout" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors ml-1">
+                                <i class="fa-solid fa-right-from-bracket text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+            
+            <!-- Navigation Tabs & Primary Actions Header -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
+                <!-- Navigation Tabs -->
+                <nav class="flex space-x-2 sm:space-x-6 overflow-x-auto border-b md:border-b-0 border-slate-100 pb-2 md:pb-0" aria-label="Tabs">
+                    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn tab-active px-3 py-2 text-sm font-medium flex items-center space-x-2 whitespace-nowrap transition-colors">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>Ringkasan Dashboard</span>
+                    </button>
+                    <button onclick="switchTab('inventory')" id="tab-inventory" class="tab-btn text-slate-500 hover:text-slate-700 px-3 py-2 text-sm font-medium flex items-center space-x-2 whitespace-nowrap transition-colors">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                        <span>Daftar Stok Produk</span>
+                    </button>
+                    <button onclick="switchTab('transactions')" id="tab-transactions" class="tab-btn text-slate-500 hover:text-slate-700 px-3 py-2 text-sm font-medium flex items-center space-x-2 whitespace-nowrap transition-colors">
+                        <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                        <span>Riwayat Mutasi Barang</span>
+                    </button>
+                    <button onclick="switchTab('suppliers')" id="tab-suppliers" class="tab-btn text-slate-500 hover:text-slate-700 px-3 py-2 text-sm font-medium flex items-center space-x-2 whitespace-nowrap transition-colors">
+                        <i class="fa-solid fa-truck-field"></i>
+                        <span>Data Pemasok (Supplier)</span>
+                    </button>
+                </nav>
+
+                <!-- Quick Action Buttons -->
+                <div class="flex items-center space-x-2 self-end md:self-auto">
+                    <button onclick="exportToCSV()" class="px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center space-x-1.5 border border-slate-200">
+                        <i class="fa-solid fa-file-csv text-emerald-600"></i>
+                        <span>Ekspor CSV</span>
+                    </button>
+                    <button onclick="openAddModal()" class="px-4 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors shadow-sm shadow-brand-500/30 flex items-center space-x-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Tambah Produk Baru</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Card 1: Total SKU -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden group hover:border-brand-300 transition-all">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Item / SKU</p>
+                            <h3 id="statTotalItems" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+                        </div>
+                        <div class="p-3 bg-brand-50 text-brand-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-box-open text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center text-xs text-slate-500">
+                        <span id="statCategoryCount" class="font-medium text-slate-700 mr-1">0</span> Kategori Terdaftar
+                    </div>
+                </div>
+
+                <!-- Card 2: Total Asset Valuation -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden group hover:border-emerald-300 transition-all">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Nilai Inventaris</p>
+                            <h3 id="statTotalValue" class="text-xl font-bold text-slate-800 mt-1">Rp 0</h3>
+                        </div>
+                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-wallet text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center text-xs text-emerald-600 font-medium">
+                        <i class="fa-solid fa-arrow-trend-up mr-1"></i> Aset Fisik Aktif
+                    </div>
+                </div>
+
+                <!-- Card 3: Low Stock Warning -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden group hover:border-amber-300 transition-all">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stok Menipis</p>
+                            <h3 id="statLowStock" class="text-2xl font-bold text-amber-600 mt-1">0</h3>
+                        </div>
+                        <div class="p-3 bg-amber-50 text-amber-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center text-xs text-amber-700">
+                        <span>Perlu Restock Segera</span>
+                    </div>
+                </div>
+
+                <!-- Card 4: Out of Stock -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden group hover:border-rose-300 transition-all">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stok Habis</p>
+                            <h3 id="statOutOfStock" class="text-2xl font-bold text-rose-600 mt-1">0</h3>
+                        </div>
+                        <div class="p-3 bg-rose-50 text-rose-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-ban text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-center text-xs text-rose-600">
+                        <span>Tidak Dapat Dijual/Dipakai</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-dashboard" class="view-panel space-y-6">
+                <!-- Charts Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Bar Chart: Category Stock Distribution -->
+                    <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-800">Sebaran Jumlah Stok Berdasarkan Kategori</h3>
+                                <p class="text-xs text-slate-400">Total unit fisik barang di gudang</p>
+                            </div>
+                            <span class="text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full"><i class="fa-regular fa-chart-bar mr-1"></i> Realtime</span>
+                        </div>
+                        <div class="relative w-full h-64">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Doughnut Chart: Stock Status Breakdown -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-800">Status Kesehatan Inventaris</h3>
+                                <p class="text-xs text-slate-400">Rasio kondisi persediaan stok</p>
+                            </div>
+                        </div>
+                        <div class="relative w-full h-64 flex items-center justify-center">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Low Stock Alert Quick Table -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-bell text-amber-500"></i>
+                            <h3 class="text-sm font-bold text-slate-800">Perhatian: Produk Membutuhkan Penambahan Stok</h3>
+                        </div>
+                        <button onclick="switchTab('inventory')" class="text-xs text-brand-600 font-semibold hover:underline">Lihat Semua produk &rarr;</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
+                                <tr>
+                                    <th class="px-4 py-3 rounded-l-lg">SKU / Kode</th>
+                                    <th class="px-4 py-3">Nama Produk</th>
+                                    <th class="px-4 py-3">Kategori</th>
+                                    <th class="px-4 py-3">Stok Saat Ini</th>
+                                    <th class="px-4 py-3">Batas Minimum</th>
+                                    <th class="px-4 py-3">Status</th>
+                                    <th class="px-4 py-3 text-right rounded-r-lg">Aksi Cepat</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lowStockTableBody" class="divide-y divide-slate-100">
+                                <!-- Dynamic Low Stock Items Row -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-inventory" class="view-panel space-y-4 hidden">
+                <!-- Category Quick Chips / Filter Jenis Produk -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center text-xs font-bold">
+                                <i class="fa-solid fa-layer-group"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-800">Jenis & Kategori Produk</h4>
+                                <p class="text-[10px] text-slate-400">Klik pada jenis/kategori untuk menyaring dan melihat daftar produk spesifik</p>
+                            </div>
+                        </div>
+                        <span id="categoryCountBadge" class="text-[11px] text-brand-600 font-semibold bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-100">0 Kategori</span>
+                    </div>
+                    <div id="categoryChipsContainer" class="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
+                        <!-- Dynamic Category Chips -->
+                    </div>
+                </div>
+
+                <!-- Filters & Controls Toolbar -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row gap-3 justify-between items-center">
+                    <!-- Search Input -->
+                    <div class="relative w-full md:w-80">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="searchInput" onkeyup="filterInventoryTable()" placeholder="Cari Kode SKU, Nama Produk, Pemasok..." class="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+                    </div>
+
+                    <!-- Dropdown Filters -->
+                    <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                        <!-- Category Filter -->
+                        <select id="filterCategory" onchange="filterInventoryTable()" class="py-2 px-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-white">
+                            <option value="ALL">Semua Kategori</option>
+                            <!-- Dynamic Categories -->
+                        </select>
+
+                        <!-- Status Filter -->
+                        <select id="filterStatus" onchange="filterInventoryTable()" class="py-2 px-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-white">
+                            <option value="ALL">Semua Status</option>
+                            <option value="SAFE">Stok Aman</option>
+                            <option value="LOW">Stok Menipis</option>
+                            <option value="EMPTY">Stok Habis</option>
+                        </select>
+
+                        <!-- Sort By -->
+                        <select id="sortBy" onchange="filterInventoryTable()" class="py-2 px-3 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 bg-white">
+                            <option value="name-asc">Nama (A-Z)</option>
+                            <option value="stock-asc">Stok Terendah</option>
+                            <option value="stock-desc">Stok Tertinggi</option>
+                            <option value="price-desc">Harga Tertinggi</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Main Inventory Table -->
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-semibold">
+                                <tr>
+                                    <th class="px-4 py-3.5">Kode SKU</th>
+                                    <th class="px-4 py-3.5">Info Produk</th>
+                                    <th class="px-4 py-3.5">Kategori</th>
+                                    <th class="px-4 py-3.5">Harga Satuan</th>
+                                    <th class="px-4 py-3.5">Jumlah Stok</th>
+                                    <th class="px-4 py-3.5">Nilai Total</th>
+                                    <th class="px-4 py-3.5">Status</th>
+                                    <th class="px-4 py-3.5 text-center">Aksi Mutasi</th>
+                                    <th class="px-4 py-3.5 text-right">Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryTableBody" class="divide-y divide-slate-100">
+                                <!-- Dynamic Rows Inserted by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Table Footer Info -->
+                    <div class="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs text-slate-500">
+                        <span>Menampilkan <strong id="showingCount">0</strong> dari <strong id="totalCount">0</strong> produk</span>
+                        <span>Joebi Management System</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-transactions" class="view-panel space-y-4 hidden">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800">Riwayat Transaksi & Mutasi Barang</h3>
+                            <p class="text-xs text-slate-400">Catatan masuk, keluar, dan penyesuaian stok terbaru</p>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-50 text-slate-500 uppercase font-semibold">
+                                <tr>
+                                    <th class="px-4 py-3 rounded-l-lg">Waktu & Tanggal</th>
+                                    <th class="px-4 py-3">Produk</th>
+                                    <th class="px-4 py-3">Tipe Mutasi</th>
+                                    <th class="px-4 py-3">Jumlah Unit</th>
+                                    <th class="px-4 py-3">Sisa Stok</th>
+                                    <th class="px-4 py-3">Petugas</th>
+                                    <th class="px-4 py-3 rounded-r-lg">Catatan / Alasan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionTableBody" class="divide-y divide-slate-100">
+                                <!-- Dynamic Transaction Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-suppliers" class="view-panel space-y-4 hidden">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800">Daftar Pemasok Resmi (Suppliers)</h3>
+                            <p class="text-xs text-slate-400">Mitra penyuplai produk inventaris gudang</p>
+                        </div>
+                        <button onclick="openSupplierToast()" class="px-3 py-1.5 bg-brand-50 text-brand-600 rounded-lg text-xs font-semibold hover:bg-brand-100 transition-colors">
+                            <i class="fa-solid fa-plus mr-1"></i> Tambah Pemasok
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="supplierGrid">
+                        <!-- Dynamic Supplier Cards -->
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modal: Add / Edit Product -->
+    <div id="productModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg p-6 transform scale-95 transition-transform duration-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
+                <h3 id="modalTitle" class="text-base font-bold text-slate-800">Tambah Produk Baru</h3>
+                <button onclick="closeProductModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="productForm" onsubmit="handleSaveProduct(event)" class="space-y-4">
+                <input type="hidden" id="editProductId">
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Kode SKU *</label>
+                        <input type="text" id="inputSKU" required placeholder="misal: SKIN-101 / MAKE-201" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori *</label>
+                        <input type="text" id="inputCategory" list="categoryOptions" required placeholder="Cleanser & Toner / Lip Cosmetics" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none">
+                        <datalist id="categoryOptions">
+                            <option value="Cleanser & Toner"></option>
+                            <option value="Serum & Essence"></option>
+                            <option value="Moisturizer & Sunscreen"></option>
+                            <option value="Lip Cosmetics"></option>
+                            <option value="Face Makeup"></option>
+                            <option value="Eye & Brow Makeup"></option>
+                        </datalist>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Produk *</label>
+                    <input type="text" id="inputName" required placeholder="misal: Niacinamide 10% Brightening Serum 30ml" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Harga Satuan (Rp) *</label>
+                        <input type="number" id="inputPrice" min="0" required placeholder="85000" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Stok Awal *</label>
+                        <input type="number" id="inputStock" min="0" required placeholder="20" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Batas Minimum *</label>
+                        <input type="number" id="inputMinStock" min="1" required placeholder="5" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Satuan</label>
+                        <select id="inputUnit" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none bg-white">
+                            <option value="Pcs">Pcs</option>
+                            <option value="Botol">Botol</option>
+                            <option value="Tube">Tube</option>
+                            <option value="Jar">Jar</option>
+                            <option value="Box">Box</option>
+                            <option value="Pack">Pack</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Pemasok (Supplier)</label>
+                        <select id="inputSupplier" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none bg-white">
+                            <!-- Dynamic Suppliers -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-2">
+                    <button type="button" onclick="closeProductModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Batal</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl transition-colors shadow-sm">Simpan Produk</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Quick Adjust Stock (Mutasi Stok Masuk/Keluar) -->
+    <div id="stockAdjustModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-md p-6 transform scale-95 transition-transform duration-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
+                <h3 id="adjustModalTitle" class="text-base font-bold text-slate-800">Mutasi Stok Barang</h3>
+                <button onclick="closeAdjustModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="adjustForm" onsubmit="handleSaveAdjustment(event)" class="space-y-4">
+                <input type="hidden" id="adjustProductId">
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <p class="text-xs text-slate-400 font-semibold uppercase">Produk</p>
+                    <p id="adjustProductName" class="text-sm font-bold text-slate-800"></p>
+                    <div class="flex justify-between items-center mt-2 text-xs text-slate-500">
+                        <span>Stok Saat Ini: <strong id="adjustCurrentStock" class="text-brand-600 font-bold">0</strong></span>
+                        <span id="adjustProductSKU" class="bg-white px-2 py-0.5 rounded border text-[10px]"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Jenis Mutasi</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center justify-center gap-2 p-2.5 border rounded-xl cursor-pointer text-xs font-semibold hover:bg-slate-50">
+                            <input type="radio" name="adjustType" value="IN" checked class="text-brand-600 focus:ring-brand-500">
+                            <span class="text-emerald-600"><i class="fa-solid fa-arrow-down mr-1"></i> Stok Masuk (+)</span>
+                        </label>
+                        <label class="flex items-center justify-center gap-2 p-2.5 border rounded-xl cursor-pointer text-xs font-semibold hover:bg-slate-50">
+                            <input type="radio" name="adjustType" value="OUT" class="text-brand-600 focus:ring-brand-500">
+                            <span class="text-rose-600"><i class="fa-solid fa-arrow-up mr-1"></i> Stok Keluar (-)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Jumlah Unit *</label>
+                    <input type="number" id="adjustQuantity" min="1" required placeholder="0" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Catatan / Alasan Mutasi</label>
+                    <input type="text" id="adjustNotes" placeholder="misal: Pembelian baru / Penjualan toko / Restock supplier" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none">
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-2">
+                    <button type="button" onclick="closeAdjustModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Batal</button>
+                    <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl transition-colors shadow-sm">Proses Mutasi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        /* --- STATE MANAGEMENT & INITIAL SEED DATA --- */
+        let currentUser = null;
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const usernameInput = document.getElementById('loginUsername').value.trim();
+            const passwordInput = document.getElementById('loginPassword').value.trim();
+            const errorDiv = document.getElementById('loginError');
+
+            // Standard credentials check (e.g., admin / admin123)
+            if (usernameInput === 'admin' && passwordInput === 'admin123') {
+                currentUser = { username: 'admin', role: 'Admin Gudang' };
+                errorDiv.classList.add('hidden');
+                
+                // Hide login screen, reveal app
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+
+                // Reset login form fields
+                document.getElementById('loginUsername').value = '';
+                document.getElementById('loginPassword').value = '';
+
+                showToast('Selamat Datang!', 'Berhasil masuk ke Sistem Monitoring Stok Joebi.', 'success');
+            } else {
+                errorDiv.classList.remove('hidden');
+                document.getElementById('loginErrorText').innerText = 'Username atau password tidak valid (Gunakan admin / admin123).';
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            showToast('Logout Berhasil', 'Anda telah keluar dari aplikasi.', 'warning');
+        }
+
+        let products = [
+            { id: 1, sku: 'SKIN-101', name: 'Glow Cleansing Gel Centella 100ml', category: 'Cleanser & Toner', price: 65000, stock: 24, minStock: 8, unit: 'Tube', supplier: 'PT Glow Cosmetics Indonesia' },
+            { id: 2, sku: 'SKIN-102', name: 'Hydrating Rose Water Toner 150ml', category: 'Cleanser & Toner', price: 89000, stock: 5, minStock: 10, unit: 'Botol', supplier: 'PT Glow Cosmetics Indonesia' },
+            { id: 3, sku: 'SKIN-201', name: 'Niacinamide 10% + Zinc Serum 30ml', category: 'Serum & Essence', price: 115000, stock: 18, minStock: 5, unit: 'Botol', supplier: 'PT Beauty Skin Utama' },
+            { id: 4, sku: 'SKIN-202', name: 'Retinol Renewal Night Serum 20ml', category: 'Serum & Essence', price: 145000, stock: 3, minStock: 6, unit: 'Botol', supplier: 'PT Beauty Skin Utama' },
+            { id: 5, sku: 'SKIN-301', name: 'Ceramide Barrier Repair Moisturizer 50g', category: 'Moisturizer & Sunscreen', price: 129000, stock: 30, minStock: 10, unit: 'Jar', supplier: 'PT Glow Cosmetics Indonesia' },
+            { id: 6, sku: 'SKIN-302', name: 'Watery Sunscreen SPF 50+ PA++++ 50ml', category: 'Moisturizer & Sunscreen', price: 98000, stock: 0, minStock: 12, unit: 'Tube', supplier: 'PT Glow Cosmetics Indonesia' },
+            { id: 7, sku: 'MAKE-401', name: 'Velvet Lip Cream - Rose Dust 4g', category: 'Lip Cosmetics', price: 59000, stock: 42, minStock: 15, unit: 'Pcs', supplier: 'CV Colorcraft Beauty' },
+            { id: 8, sku: 'MAKE-402', name: 'Glossy Lip Tint - Cherry Red 3.5g', category: 'Lip Cosmetics', price: 49000, stock: 28, minStock: 10, unit: 'Pcs', supplier: 'CV Colorcraft Beauty' },
+            { id: 9, sku: 'MAKE-403', name: 'Matte Lipstick - Nude Coral 3.8g', category: 'Lip Cosmetics', price: 62000, stock: 4, minStock: 8, unit: 'Pcs', supplier: 'CV Colorcraft Beauty' },
+            { id: 10, sku: 'MAKE-501', name: 'Cushion Foundation SPF 35 - Natural Beige 15g', category: 'Face Makeup', price: 165000, stock: 15, minStock: 5, unit: 'Pcs', supplier: 'PT Paragon Beauty Global' },
+            { id: 11, sku: 'MAKE-502', name: 'Loose Powder Translucent Oil-Control 20g', category: 'Face Makeup', price: 75000, stock: 22, minStock: 8, unit: 'Pcs', supplier: 'PT Paragon Beauty Global' },
+            { id: 12, sku: 'MAKE-503', name: 'Matte Setting Spray Long-Lasting 100ml', category: 'Face Makeup', price: 85000, stock: 2, minStock: 5, unit: 'Botol', supplier: 'PT Paragon Beauty Global' },
+            { id: 13, sku: 'MAKE-601', name: 'Waterproof Mascara Volume & Curl 8ml', category: 'Eye & Brow Makeup', price: 79000, stock: 19, minStock: 6, unit: 'Pcs', supplier: 'CV Colorcraft Beauty' },
+            { id: 14, sku: 'MAKE-602', name: 'Slim Eyebrow Pencil - Dark Brown', category: 'Eye & Brow Makeup', price: 39000, stock: 50, minStock: 15, unit: 'Pcs', supplier: 'CV Colorcraft Beauty' },
+            { id: 15, sku: 'MAKE-603', name: 'Precision Liquid Eyeliner Intense Black 1ml', category: 'Eye & Brow Makeup', price: 55000, stock: 0, minStock: 8, unit: 'Pcs', supplier: 'CV Colorcraft Beauty' }
+        ];
+
+        let suppliers = [
+            { id: 1, name: 'PT Glow Cosmetics Indonesia', phone: '+62 812-9900-1122', email: 'order@glowcosmetics.co.id', city: 'Jakarta Selatan' },
+            { id: 2, name: 'PT Beauty Skin Utama', phone: '+62 818-7766-5544', email: 'sales@beautyskin.co.id', city: 'Bandung' },
+            { id: 3, name: 'CV Colorcraft Beauty', phone: '+62 856-3344-5566', email: 'distribution@colorcraft.com', city: 'Surabaya' },
+            { id: 4, name: 'PT Paragon Beauty Global', phone: '+62 821-2233-4455', email: 'supply@paragonbeauty.id', city: 'Tangerang' }
+        ];
+
+        let transactions = [
+            { id: 101, timestamp: '2026-10-07 09:15', productName: 'Glow Cleansing Gel Centella 100ml', type: 'IN', qty: 10, remaining: 24, user: 'Admin Gudang', notes: 'Restock bulanan supplier' },
+            { id: 102, timestamp: '2026-10-07 10:30', productName: 'Watery Sunscreen SPF 50+ PA++++ 50ml', type: 'OUT', qty: 12, remaining: 0, user: 'Admin Gudang', notes: 'Laris manis - Flash Sale Toko' },
+            { id: 103, timestamp: '2026-10-07 11:45', productName: 'Velvet Lip Cream - Rose Dust 4g', type: 'OUT', qty: 5, remaining: 42, user: 'Kasir Toko', notes: 'Penjualan offline store' }
+        ];
+
+        let categoryChartInstance = null;
+        let statusChartInstance = null;
+
+        // Utility: Currency Formatter (IDR)
+        function formatRupiah(amount) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+        }
+
+        // Utility: Show Toast Message
+        function showToast(title, message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                            type === 'danger' ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-amber-50 border-amber-200 text-amber-800';
+            const icon = type === 'success' ? 'fa-circle-check text-emerald-500' :
+                         type === 'danger' ? 'fa-circle-xmark text-rose-500' : 'fa-triangle-exclamation text-amber-500';
+
+            toast.className = `pointer-events-auto flex items-start gap-3 p-4 rounded-xl border shadow-lg ${bgColor} transition-all duration-300 transform translate-y-2 opacity-0`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icon} text-lg mt-0.5"></i>
+                <div class="flex-grow">
+                    <h5 class="text-xs font-bold">${title}</h5>
+                    <p class="text-[11px] opacity-90 mt-0.5">${message}</p>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('currentTime').innerText = now.toLocaleTimeString('id-ID');
+            document.getElementById('currentDate').innerText = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('tab-active');
+                btn.classList.add('text-slate-500');
+            });
+            document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
+
+            const targetBtn = document.getElementById(`tab-${tabId}`);
+            const targetView = document.getElementById(`view-${tabId}`);
+
+            if (targetBtn && targetView) {
+                targetBtn.classList.add('tab-active');
+                targetBtn.classList.remove('text-slate-500');
+                targetView.classList.remove('hidden');
+            }
+        }
+
+        function updateDashboardStats() {
+            const totalSKUs = products.length;
+            const totalValue = products.reduce((acc, p) => acc + (p.price * p.stock), 0);
+            const lowStockCount = products.filter(p => p.stock > 0 && p.stock <= p.minStock).length;
+            const outOfStockCount = products.filter(p => p.stock === 0).length;
+            const categories = [...new Set(products.map(p => p.category))];
+
+            document.getElementById('statTotalItems').innerText = totalSKUs;
+            document.getElementById('statTotalValue').innerText = formatRupiah(totalValue);
+            document.getElementById('statLowStock').innerText = lowStockCount;
+            document.getElementById('statOutOfStock').innerText = outOfStockCount;
+            document.getElementById('statCategoryCount').innerText = categories.length;
+
+            renderLowStockTable();
+            renderNotificationDropdown();
+            renderCharts();
+        }
+
+        function renderCharts() {
+            // Data grouping by category
+            const categoryCounts = {};
+            products.forEach(p => {
+                categoryCounts[p.category] = (categoryCounts[p.category] || 0) + p.stock;
+            });
+
+            const catLabels = Object.keys(categoryCounts);
+            const catData = Object.values(categoryCounts);
+
+            // Chart 1: Bar Chart (Category Stock)
+            const ctxCat = document.getElementById('categoryChart').getContext('2d');
+            if (categoryChartInstance) categoryChartInstance.destroy();
+            
+            categoryChartInstance = new Chart(ctxCat, {
+                type: 'bar',
+                data: {
+                    labels: catLabels,
+                    datasets: [{
+                        label: 'Jumlah Stok Unit',
+                        data: catData,
+                        backgroundColor: '#0284c7',
+                        borderRadius: 8,
+                        hoverBackgroundColor: '#0369a1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // Chart 2: Status Breakdown Doughnut
+            const safeCount = products.filter(p => p.stock > p.minStock).length;
+            const lowCount = products.filter(p => p.stock > 0 && p.stock <= p.minStock).length;
+            const emptyCount = products.filter(p => p.stock === 0).length;
+
+            const ctxStatus = document.getElementById('statusChart').getContext('2d');
+            if (statusChartInstance) statusChartInstance.destroy();
+
+            statusChartInstance = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Stok Aman', 'Stok Menipis', 'Stok Habis'],
+                    datasets: [{
+                        data: [safeCount, lowCount, emptyCount],
+                        backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        function renderNotificationDropdown() {
+            const lowStockItems = products.filter(p => p.stock <= p.minStock);
+            const badge = document.getElementById('notifBadge');
+            const list = document.getElementById('notifList');
+            const countText = document.getElementById('notifCountText');
+
+            countText.innerText = `${lowStockItems.length} Peringatan`;
+
+            if (lowStockItems.length > 0) {
+                badge.classList.remove('hidden');
+                list.innerHTML = lowStockItems.map(p => `
+                    <div class="px-4 py-3 hover:bg-slate-50 flex items-start gap-3">
+                        <i class="fa-solid fa-triangle-exclamation ${p.stock === 0 ? 'text-rose-500' : 'text-amber-500'} mt-0.5"></i>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-800">${p.name}</p>
+                            <p class="text-[11px] text-slate-500">Stok: <span class="font-bold">${p.stock} ${p.unit}</span> (Min: ${p.minStock})</p>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                badge.classList.add('hidden');
+                list.innerHTML = `<div class="px-4 py-4 text-center text-xs text-slate-400">Semua stok barang dalam kondisi aman.</div>`;
+            }
+        }
+
+        function toggleNotificationDropdown() {
+            const dropdown = document.getElementById('notifDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        // Close notification dropdown when clicking outside
+        window.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('notificationMenuWrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('notifDropdown').classList.add('hidden');
+            }
+        });
+
+        function renderLowStockTable() {
+            const tbody = document.getElementById('lowStockTableBody');
+            const lowItems = products.filter(p => p.stock <= p.minStock);
+
+            if (lowItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-slate-400">Tidak ada produk yang membutuhkan restock mendesak.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = lowItems.map(p => {
+                const statusBadge = p.stock === 0 ? 
+                    `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-700">Stok Habis</span>` :
+                    `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">Stok Menipis</span>`;
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="px-4 py-3 font-mono font-semibold text-brand-700">${p.sku}</td>
+                        <td class="px-4 py-3 font-medium text-slate-800">${p.name}</td>
+                        <td class="px-4 py-3 text-slate-500">${p.category}</td>
+                        <td class="px-4 py-3 font-bold ${p.stock === 0 ? 'text-rose-600' : 'text-amber-600'}">${p.stock} ${p.unit}</td>
+                        <td class="px-4 py-3 text-slate-500">${p.minStock} ${p.unit}</td>
+                        <td class="px-4 py-3">${statusBadge}</td>
+                        <td class="px-4 py-3 text-right">
+                            <button onclick="openAdjustModal(${p.id}, 'IN')" class="px-2.5 py-1 bg-brand-50 hover:bg-brand-100 text-brand-600 font-semibold rounded-md transition-colors text-[11px]">
+                                <i class="fa-solid fa-plus mr-1"></i> Restock
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderInventoryTable(itemsToRender = products) {
+            const tbody = document.getElementById('inventoryTableBody');
+            document.getElementById('showingCount').innerText = itemsToRender.length;
+            document.getElementById('totalCount').innerText = products.length;
+
+            if (itemsToRender.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="px-4 py-8 text-center text-slate-400">Tidak ditemukan produk yang sesuai dengan kriteria pencarian.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = itemsToRender.map(p => {
+                // Stock health status calculation
+                let statusBadge = '';
+                if (p.stock === 0) {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 flex items-center w-fit gap-1"><i class="fa-solid fa-circle text-[6px]"></i> Habis</span>`;
+                } else if (p.stock <= p.minStock) {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 flex items-center w-fit gap-1"><i class="fa-solid fa-circle text-[6px]"></i> Menipis</span>`;
+                } else {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 flex items-center w-fit gap-1"><i class="fa-solid fa-circle text-[6px]"></i> Aman</span>`;
+                }
+
+                const totalVal = p.price * p.stock;
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="px-4 py-3.5 font-mono text-slate-600 font-semibold">${p.sku}</td>
+                        <td class="px-4 py-3.5">
+                            <div class="font-bold text-slate-800">${p.name}</div>
+                            <div class="text-[10px] text-slate-400">Pemasok: ${p.supplier || '-'}</div>
+                        </td>
+                        <td class="px-4 py-3.5">
+                            <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[11px] font-medium border border-slate-200">${p.category}</span>
+                        </td>
+                        <td class="px-4 py-3.5 font-medium text-slate-700">${formatRupiah(p.price)}</td>
+                        <td class="px-4 py-3.5">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-slate-800">${p.stock} ${p.unit}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400">Min: ${p.minStock}</div>
+                        </td>
+                        <td class="px-4 py-3.5 font-bold text-slate-800">${formatRupiah(totalVal)}</td>
+                        <td class="px-4 py-3.5">${statusBadge}</td>
+                        <td class="px-4 py-3.5 text-center">
+                            <div class="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                                <button onclick="openAdjustModal(${p.id}, 'IN')" title="Tambah Stok" class="px-2 py-1 hover:bg-white text-emerald-600 rounded-md transition-all text-xs">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                                <button onclick="openAdjustModal(${p.id}, 'OUT')" title="Kurangi Stok" class="px-2 py-1 hover:bg-white text-rose-600 rounded-md transition-all text-xs">
+                                    <i class="fa-solid fa-minus"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3.5 text-right space-x-1">
+                            <button onclick="openEditModal(${p.id})" title="Edit Produk" class="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deleteProduct(${p.id})" title="Hapus Produk" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function populateCategoryFilter() {
+            const categories = [...new Set(products.map(p => p.category))];
+            const select = document.getElementById('filterCategory');
+            const currentSelected = select ? select.value : 'ALL';
+
+            select.innerHTML = '<option value="ALL">Semua Kategori (' + products.length + ')</option>' + 
+                categories.map(c => {
+                    const count = products.filter(p => p.category === c).length;
+                    return `<option value="${c}">${c} (${count})</option>`;
+                }).join('');
+
+            select.value = currentSelected;
+
+            // Render interactive Category Chips
+            const chipsContainer = document.getElementById('categoryChipsContainer');
+            if (chipsContainer) {
+                let html = `
+                    <button onclick="filterByCategoryChip('ALL')" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${currentSelected === 'ALL' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                        <i class="fa-solid fa-boxes-stacked text-[10px]"></i>
+                        <span>Semua Produk</span>
+                        <span class="px-1.5 py-0.2 rounded-full text-[10px] ${currentSelected === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}">${products.length}</span>
+                    </button>
+                `;
+
+                categories.forEach(cat => {
+                    const count = products.filter(p => p.category === cat).length;
+                    const isActive = currentSelected === cat;
+                    html += `
+                        <button onclick="filterByCategoryChip('${cat}')" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${isActive ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                            <span>${cat}</span>
+                            <span class="px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}">${count}</span>
+                        </button>
+                    `;
+                });
+                chipsContainer.innerHTML = html;
+                
+                const badge = document.getElementById('categoryCountBadge');
+                if (badge) badge.innerText = `${categories.length} Kategori Produk`;
+            }
+        }
+
+        function filterByCategoryChip(categoryName) {
+            const select = document.getElementById('filterCategory');
+            select.value = categoryName;
+            filterInventoryTable();
+        }
+
+        function filterInventoryTable() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const selectedCat = document.getElementById('filterCategory').value;
+            const selectedStatus = document.getElementById('filterStatus').value;
+            const sortBy = document.getElementById('sortBy').value;
+
+            // Sync visual chips with current selection
+            populateCategoryFilter();
+
+            let filtered = products.filter(p => {
+                const matchesQuery = p.name.toLowerCase().includes(query) || 
+                                     p.sku.toLowerCase().includes(query) || 
+                                     (p.supplier && p.supplier.toLowerCase().includes(query));
+                
+                const matchesCat = selectedCat === 'ALL' || p.category === selectedCat;
+
+                let matchesStatus = true;
+                if (selectedStatus === 'SAFE') matchesStatus = p.stock > p.minStock;
+                else if (selectedStatus === 'LOW') matchesStatus = p.stock > 0 && p.stock <= p.minStock;
+                else if (selectedStatus === 'EMPTY') matchesStatus = p.stock === 0;
+
+                return matchesQuery && matchesCat && matchesStatus;
+            });
+
+            // Sorting
+            filtered.sort((a, b) => {
+                if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
+                if (sortBy === 'stock-asc') return a.stock - b.stock;
+                if (sortBy === 'stock-desc') return b.stock - a.stock;
+                if (sortBy === 'price-desc') return b.price - a.price;
+                return 0;
+            });
+
+            renderInventoryTable(filtered);
+        }
+
+        function renderTransactionTable() {
+            const tbody = document.getElementById('transactionTableBody');
+            if (transactions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-slate-400">Belum ada riwayat mutasi stok.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = transactions.map(t => {
+                const typeTag = t.type === 'IN' ? 
+                    `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700"><i class="fa-solid fa-arrow-down mr-1"></i> Stok Masuk</span>` :
+                    `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700"><i class="fa-solid fa-arrow-up mr-1"></i> Stok Keluar</span>`;
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="px-4 py-3 text-slate-500">${t.timestamp}</td>
+                        <td class="px-4 py-3 font-semibold text-slate-800">${t.productName}</td>
+                        <td class="px-4 py-3">${typeTag}</td>
+                        <td class="px-4 py-3 font-bold ${t.type === 'IN' ? 'text-emerald-600' : 'text-rose-600'}">${t.type === 'IN' ? '+' : '-'}${t.qty}</td>
+                        <td class="px-4 py-3 text-slate-600 font-medium">${t.remaining} Unit</td>
+                        <td class="px-4 py-3 text-slate-500">${t.user}</td>
+                        <td class="px-4 py-3 text-slate-500 italic">${t.notes || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderSuppliers() {
+            const grid = document.getElementById('supplierGrid');
+            grid.innerHTML = suppliers.map(s => {
+                const countProducts = products.filter(p => p.supplier === s.name).length;
+                return `
+                    <div class="p-4 rounded-xl border border-slate-200/80 bg-white hover:border-brand-300 transition-all shadow-sm">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-lg">
+                                <i class="fa-solid fa-truck"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-800">${s.name}</h4>
+                                <p class="text-[10px] text-slate-400"><i class="fa-solid fa-location-dot mr-1"></i> ${s.city}</p>
+                            </div>
+                        </div>
+                        <div class="space-y-1 text-xs text-slate-600 border-t border-slate-100 pt-3">
+                            <p><i class="fa-solid fa-phone text-slate-400 w-4"></i> ${s.phone}</p>
+                            <p><i class="fa-solid fa-envelope text-slate-400 w-4"></i> ${s.email}</p>
+                            <p class="mt-2 text-[11px] font-medium text-brand-600 bg-brand-50 px-2 py-0.5 rounded w-fit">${countProducts} Produk Suplai</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Also update modal supplier dropdown options
+            const select = document.getElementById('inputSupplier');
+            select.innerHTML = suppliers.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+        }
+
+        function openAddModal() {
+            document.getElementById('modalTitle').innerText = 'Tambah Produk Baru';
+            document.getElementById('editProductId').value = '';
+            document.getElementById('productForm').reset();
+            
+            const modal = document.getElementById('productModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.firstElementChild.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function openEditModal(productId) {
+            const p = products.find(prod => prod.id === productId);
+            if (!p) return;
+
+            document.getElementById('modalTitle').innerText = 'Edit Data Produk';
+            document.getElementById('editProductId').value = p.id;
+            document.getElementById('inputSKU').value = p.sku;
+            document.getElementById('inputCategory').value = p.category;
+            document.getElementById('inputName').value = p.name;
+            document.getElementById('inputPrice').value = p.price;
+            document.getElementById('inputStock').value = p.stock;
+            document.getElementById('inputMinStock').value = p.minStock;
+            document.getElementById('inputUnit').value = p.unit;
+            document.getElementById('inputSupplier').value = p.supplier || '';
+
+            const modal = document.getElementById('productModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.firstElementChild.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeProductModal() {
+            const modal = document.getElementById('productModal');
+            modal.classList.add('opacity-0');
+            modal.firstElementChild.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function handleSaveProduct(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editProductId').value;
+            const sku = document.getElementById('inputSKU').value.trim();
+            const category = document.getElementById('inputCategory').value.trim();
+            const name = document.getElementById('inputName').value.trim();
+            const price = parseFloat(document.getElementById('inputPrice').value);
+            const stock = parseInt(document.getElementById('inputStock').value);
+            const minStock = parseInt(document.getElementById('inputMinStock').value);
+            const unit = document.getElementById('inputUnit').value;
+            const supplier = document.getElementById('inputSupplier').value;
+
+            if (editId) {
+                // Edit existing product
+                const index = products.findIndex(p => p.id === parseInt(editId));
+                if (index !== -1) {
+                    products[index] = { ...products[index], sku, category, name, price, stock, minStock, unit, supplier };
+                    showToast('Berhasil Diperbarui', `Data produk ${name} telah disimpan.`, 'success');
+                }
+            } else {
+                // Add new product
+                const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+                products.push({ id: newId, sku, category, name, price, stock, minStock, unit, supplier });
+                
+                // Add initial transaction log
+                const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+                transactions.unshift({
+                    id: Date.now(),
+                    timestamp: nowStr,
+                    productName: name,
+                    type: 'IN',
+                    qty: stock,
+                    remaining: stock,
+                    user: 'Admin Gudang',
+                    notes: 'Pendaftaran barang baru'
+                });
+
+                showToast('Produk Ditambahkan', `${name} berhasil didaftarkan ke sistem.`, 'success');
+            }
+
+            closeProductModal();
+            populateCategoryFilter();
+            filterInventoryTable();
+            updateDashboardStats();
+            renderTransactionTable();
+            renderSuppliers();
+        }
+
+        function deleteProduct(productId) {
+            const p = products.find(prod => prod.id === productId);
+            if (!p) return;
+
+            // Custom non-blocking modal simulation
+            if (confirm(`Apakah Anda yakin ingin menghapus produk "${p.name}"?`)) {
+                products = products.filter(prod => prod.id !== productId);
+                showToast('Produk Dihapus', `Produk ${p.name} telah dihapus dari inventaris.`, 'danger');
+                populateCategoryFilter();
+                filterInventoryTable();
+                updateDashboardStats();
+            }
+        }
+
+        function openAdjustModal(productId, defaultType = 'IN') {
+            const p = products.find(prod => prod.id === productId);
+            if (!p) return;
+
+            document.getElementById('adjustProductId').value = p.id;
+            document.getElementById('adjustProductName').innerText = p.name;
+            document.getElementById('adjustProductSKU').innerText = p.sku;
+            document.getElementById('adjustCurrentStock').innerText = `${p.stock} ${p.unit}`;
+            document.getElementById('adjustQuantity').value = '';
+            document.getElementById('adjustNotes').value = '';
+
+            const radios = document.getElementsByName('adjustType');
+            radios.forEach(r => r.checked = (r.value === defaultType));
+
+            const modal = document.getElementById('stockAdjustModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.firstElementChild.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeAdjustModal() {
+            const modal = document.getElementById('stockAdjustModal');
+            modal.classList.add('opacity-0');
+            modal.firstElementChild.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function handleSaveAdjustment(e) {
+            e.preventDefault();
+            const productId = parseInt(document.getElementById('adjustProductId').value);
+            const qty = parseInt(document.getElementById('adjustQuantity').value);
+            const notes = document.getElementById('adjustNotes').value.trim();
+            const type = document.querySelector('input[name="adjustType"]:checked').value;
+
+            const p = products.find(prod => prod.id === productId);
+            if (!p) return;
+
+            if (type === 'OUT' && qty > p.stock) {
+                showToast('Gagal Mutasi', 'Jumlah stok keluar melebihi stok yang tersedia!', 'danger');
+                return;
+            }
+
+            if (type === 'IN') {
+                p.stock += qty;
+            } else {
+                p.stock -= qty;
+            }
+
+            const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+            transactions.unshift({
+                id: Date.now(),
+                timestamp: nowStr,
+                productName: p.name,
+                type: type,
+                qty: qty,
+                remaining: p.stock,
+                user: 'Admin Gudang',
+                notes: notes || (type === 'IN' ? 'Penambahan Stok' : 'Pengurangan Stok')
+            });
+
+            showToast('Mutasi Berhasil', `Stok ${p.name} diperbarui menjadi ${p.stock} ${p.unit}.`, 'success');
+            
+            closeAdjustModal();
+            filterInventoryTable();
+            updateDashboardStats();
+            renderTransactionTable();
+        }
+
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Kode SKU,Nama Produk,Kategori,Harga Satuan,Jumlah Stok,Batas Minimum,Satuan,Nilai Total,Pemasok\n";
+
+            products.forEach(p => {
+                const total = p.price * p.stock;
+                const row = `"${p.sku}","${p.name}","${p.category}",${p.price},${p.stock},${p.minStock},"${p.unit}",${total},"${p.supplier || ''}"`;
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Joebi_Report_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast('Ekspor Berhasil', 'Data inventaris telah diunduh format CSV.', 'success');
+        }
+
+        function openSupplierToast() {
+            showToast('Informasi', 'Fitur penambahan supplier terhubung dengan sistem CRM.', 'warning');
+        }
+
+        window.onload = function() {
+            populateCategoryFilter();
+            renderInventoryTable();
+            updateDashboardStats();
+            renderTransactionTable();
+            renderSuppliers();
+        };
+    </script>
+</body>
+</html>
